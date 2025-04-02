@@ -1,0 +1,51 @@
+import streamlit as st
+import pandas as pd
+import joblib
+
+# Load the trained model and label encoder
+model = joblib.load('triage_model.pkl')
+label_encoder = joblib.load('label_encoder.pkl')
+
+st.set_page_config(page_title="Predict Patient Care", page_icon="🧠")
+st.title("🧠 AI Triage Assistant for Underserved Hospitals")
+st.write("This assistant predicts the urgency level of a patient's condition based on symptoms and vitals.")
+
+# Define input fields
+age = st.slider("Patient Age", 0, 100, 30)
+gender = st.selectbox("Gender", ["Male", "Female"])
+
+st.markdown("### Symptoms (Check all that apply):")
+fever = st.checkbox("Fever")
+cough = st.checkbox("Cough")
+fatigue = st.checkbox("Fatigue")
+#breathlessness = st.checkbox("Breathlessness")
+#headache = st.checkbox("Headache")
+#chest_pain = st.checkbox("Chest Pain")
+
+# Convert inputs to model features
+symptoms = {
+    "Fever": int(fever),
+    "Cough": int(cough),
+    "Fatigue": int(fatigue)
+}
+
+gender_encoded = 0 if gender == "Male" else 1
+
+input_df = pd.DataFrame([{
+    "Age": age,
+    "Gender": gender_encoded,
+    **symptoms
+}])
+
+# Predict
+if st.button("Predict Triage Level"):
+    prediction = model.predict(input_df)[0]
+    predicted_label = label_encoder.inverse_transform([prediction])[0]
+
+    st.subheader(f"🩺 Predicted Triage Level: **{predicted_label}**")
+    if predicted_label == "Emergency":
+        st.error("🚨 Immediate medical attention recommended!")
+    elif predicted_label == "Urgent":
+        st.warning("⚠️ Needs medical care soon.")
+    else:
+        st.success("✅ Safe to monitor or treat routinely.")
