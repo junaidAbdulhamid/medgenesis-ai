@@ -1,0 +1,77 @@
+# 🧠 AI Triage Assistant – Retraining with More Symptoms (MedGenesis AI)
+
+# Step 1: Import Libraries
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import classification_report, confusion_matrix
+import joblib
+
+# Step 2: Load Dataset
+# Replace this with your actual file if you're using the real Kaggle dataset
+# Example: df = pd.read_csv('your-dataset.csv')
+
+# Simulated dataset with more symptoms
+data = {
+    "Age": [25, 60, 40, 30, 70, 50, 45, 28, 65, 35, 32, 48],
+    "Gender": ["Male", "Female", "Female", "Male", "Female", "Male", "Female", "Male", "Female", "Female", "Male", "Female"],
+    "Fever": ['Yes', 'Yes', 'No', 'Yes', 'Yes', 'Yes', 'No', 'Yes', 'Yes', 'No', 'Yes', 'Yes'],
+    "Cough": ['Yes', 'Yes', 'Yes', 'No', 'Yes', 'No', 'Yes', 'Yes', 'Yes', 'No', 'Yes', 'Yes'],
+    "Fatigue": ['Yes', 'Yes', 'Yes', 'No', 'Yes', 'No', 'Yes', 'Yes', 'No', 'Yes', 'No', 'Yes'],
+    "Breathlessness": ['No', 'Yes', 'No', 'No', 'Yes', 'No', 'No', 'No', 'Yes', 'No', 'Yes', 'Yes'],
+    "Headache": ['Yes', 'Yes', 'No', 'No', 'Yes', 'No', 'Yes', 'Yes', 'No', 'Yes', 'No', 'Yes'],
+    "Chest_pain": ['No', 'Yes', 'No', 'No', 'Yes', 'No', 'No', 'Yes', 'Yes', 'No', 'Yes', 'Yes']
+}
+df = pd.DataFrame(data)
+
+# Step 3: Convert symptom columns to binary
+symptom_cols = ['Fever', 'Cough', 'Fatigue', 'Breathlessness', 'Headache', 'Chest_pain']
+df[symptom_cols] = df[symptom_cols].applymap(lambda x: 1 if str(x).lower() in ['yes', 'y', 'present', '1'] else 0)
+
+# Step 4: Encode Gender
+df['Gender'] = LabelEncoder().fit_transform(df['Gender'])
+
+# Step 5: Create Severity Score & Triage Label
+df['Severity_Score'] = df[symptom_cols].sum(axis=1)
+
+def assign_triage(score):
+    if score >= 6:
+        return 'Emergency'
+    elif score >= 3:
+        return 'Urgent'
+    else:
+        return 'Routine'
+
+df['Triage_Level'] = df['Severity_Score'].apply(assign_triage)
+
+# Step 6: Prepare Features and Target
+features = ['Age', 'Gender'] + symptom_cols
+X = df[features]
+y = df['Triage_Level']
+
+# Encode Triage Levels
+label_encoder = LabelEncoder()
+y_encoded = label_encoder.fit_transform(y)
+
+# Step 7: Train/Test Split
+X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
+
+# Step 8: Train the Random Forest Model
+rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+rf_model.fit(X_train, y_train)
+
+# Step 9: Evaluate the Model
+y_pred = rf_model.predict(X_test)
+
+# Ensure consistent class reporting
+all_labels = label_encoder.transform(label_encoder.classes_)
+report = classification_report(y_test, y_pred, labels=all_labels, target_names=label_encoder.classes_, zero_division=0)
+conf_matrix = confusion_matrix(y_test, y_pred, labels=all_labels)
+
+print("📊 Classification Report:\n", report)
+print("\n🧮 Confusion Matrix:\n", conf_matrix)
+
+# Step 10: Save Model and Label Encoder
+joblib.dump(rf_model, 'triage_model_v2.pkl')
+joblib.dump(label_encoder, 'label_encoder_v2.pkl')
